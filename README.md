@@ -1,6 +1,10 @@
 # Experiment Results
 The repository hosts the data collected from experiments.
 
+The repository uses git lfs, after checkout, you need to use following command to fetch large files:
+
+```git lfs fetch --all```
+
 ***raw_data*** folder contains the raw data of experiments and the scripts that produce the plots for the article.
 
 
