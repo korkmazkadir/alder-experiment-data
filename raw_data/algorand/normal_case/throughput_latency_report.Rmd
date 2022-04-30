@@ -1,0 +1,113 @@
+---
+title: "Throughput and Latency Plots"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(dplyr)
+
+# Get folder path which contains stat files for all experiments
+filePath <- "/home/kadir/Desktop/algorand/Scalability/G5K-10_Machine-1000_Nodes/experiments.stat"
+
+raw_stat_df <- read.table(filePath, sep="\t", header=FALSE)
+
+colnames(raw_stat_df)[1] = "Type"
+colnames(raw_stat_df)[2] = "Node"
+colnames(raw_stat_df)[3] = "MacroBlockSize"
+colnames(raw_stat_df)[4] = "ConcurrencyConstant"
+colnames(raw_stat_df)[5] = "Round"
+colnames(raw_stat_df)[6] = "BlockPropagation"
+colnames(raw_stat_df)[7] = "BAWithOutFinalStep"
+colnames(raw_stat_df)[8] = "BAWithFinalStep"
+colnames(raw_stat_df)[9] = "ConsensusType"
+colnames(raw_stat_df)[10] = "BlockType"
+colnames(raw_stat_df)[11] = "BlockHash"
+colnames(raw_stat_df)[12] = "PayloadSize"
+colnames(raw_stat_df)[13] = "ElectedAsLeader"
+
+
+raw_stat_df$MacroBlockSize <- raw_stat_df$MacroBlockSize / 1000000
+
+```
+
+
+# Macro Block Size vs Throughput
+
+```{r throughput, fig.height=4, fig.width=6,  echo=FALSE}
+library(ggplot2)
+library(knitr)
+
+filtered_df <- filter(raw_stat_df, Round > 5 & Round <= 15 & PayloadSize > 0)
+
+
+grouped_throughput_df <- filtered_df %>% 
+                          group_by(MacroBlockSize, ConcurrencyConstant, Node ) %>%
+                          mutate( Throughput = (sum(PayloadSize) / 1000)  / sum(BAWithFinalStep) ) %>%
+                          mutate( Count = n())
+
+
+throughput_plot_df <- grouped_throughput_df %>% 
+                  group_by(MacroBlockSize, ConcurrencyConstant ) %>%
+                  summarise(
+                    Min = min(Throughput),
+                    Q1 = quantile(Throughput, 0.25),
+                    Median = median(Throughput),
+                    Mean = mean(Throughput),
+                    Q3 = quantile(Throughput, 0.75),
+                    Max = max(Throughput)
+                  )
+
+
+ggplot(throughput_plot_df, aes(x=MacroBlockSize, y=Median, group=ConcurrencyConstant)) +
+  geom_line(aes( linetype=factor(ConcurrencyConstant), color=factor(ConcurrencyConstant) ))+
+  geom_point() +
+  geom_errorbar(aes(ymin=Q1, ymax=Q3), width=.5) +
+  labs( x = "Macroblock Size (MB)", y = "Median Throughput (KB/Second)", color = "Cl", linetype="Cl" )+
+  theme_bw()+
+  theme(legend.position="top",legend.box="horizontal", legend.margin=margin())+
+  scale_x_continuous(labels = as.character(throughput_plot_df$MacroBlockSize), breaks = throughput_plot_df$MacroBlockSize)+
+  scale_y_continuous(breaks=seq(0,max(throughput_plot_df$Median),100))+
+  expand_limits(y = 0, x=0)+
+  guides(linetype = guide_legend(nrow = 1))
+
+ggsave("normal-case-throughput.pdf")
+
+kable(throughput_plot_df)
+
+```
+
+
+\newpage
+# Macro Block Size vs Latency
+```{r latency,fig.height=4, fig.width=6, echo=FALSE}
+
+
+latency_plot_df <- filtered_df %>% 
+                  group_by(MacroBlockSize, ConcurrencyConstant ) %>%
+                  summarise(
+                    Min = min(BAWithFinalStep),
+                    Q1 = quantile(BAWithFinalStep, 0.25),
+                    Median = median(BAWithFinalStep),
+                    Mean = mean(BAWithFinalStep),
+                    Q3 = quantile(BAWithFinalStep, 0.75),
+                    Max = max(BAWithFinalStep)
+                  )
+
+ggplot(latency_plot_df, aes(x=MacroBlockSize, y=Median, group=ConcurrencyConstant)) +
+  geom_line(aes( linetype=factor(ConcurrencyConstant), color=factor(ConcurrencyConstant) ))+
+  geom_point() +
+  geom_errorbar(aes(ymin=Q1, ymax=Q3), width=.3) +
+  labs( x = "Macroblock Size (MB)", y = "Median Latency (Seconds)", color = "Cl", linetype="Cl" )+
+  theme_bw()+
+  theme(legend.position="top",legend.box="horizontal", legend.margin=margin()) +
+  scale_x_continuous(labels = as.character(latency_plot_df$MacroBlockSize), breaks = latency_plot_df$MacroBlockSize)+
+  scale_y_continuous(breaks=seq(0,max(latency_plot_df$Median),20))+
+  expand_limits(y = 0, x=0)+
+  guides(linetype = guide_legend(nrow = 1))
+
+ggsave("normal-case-latency.pdf")
+
+kable(latency_plot_df)
+
+```
+

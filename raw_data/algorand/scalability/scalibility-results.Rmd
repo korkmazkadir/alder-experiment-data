@@ -1,0 +1,112 @@
+---
+title: "Scalibility Experiment Throughput and Latency Plots"
+output: pdf_document
+---
+
+```{r setup,  echo=FALSE}
+library(dplyr)
+library(knitr)
+
+
+throughput_df <- do.call(rbind,lapply(c("./algorand-scalabilit-throughput.csv","./dandelion-scalabilit-throughput.csv"),read.csv))
+
+latency_df <- do.call(rbind,lapply(c("./algorand-scalabilit-latency.csv","./dandelion-scalabilit-latency.csv"),read.csv))
+
+
+######################## Nomalize ##########################
+
+dandelion_median_baseline_throughput <- throughput_df %>%  filter(Grp == "DANDELION" & ID == 1000)  %>% .$Median
+algorand_median_baseline_throughput <- throughput_df %>%  filter(Grp == "ALGORAND" & ID == 1000) %>% .$Median
+
+dandelion_median_baseline_latency <- latency_df %>%  filter(Grp == "DANDELION" & ID == 1000)  %>% .$Median
+algorand_median_baseline_latency <- latency_df %>%  filter(Grp == "ALGORAND" & ID == 1000) %>% .$Median
+
+
+throughput_df <-throughput_df %>% mutate(Median = if_else(Grp == "DANDELION", 
+                                                             1-(Median / dandelion_median_baseline_throughput), 
+                                                             1-(Median / algorand_median_baseline_throughput)))
+
+
+latency_df <-latency_df %>% mutate(Median = if_else(Grp == "DANDELION", 
+                                                             (Median / dandelion_median_baseline_latency)-1, 
+                                                             (Median / algorand_median_baseline_latency)-1   ))
+
+
+########Renames the protocol
+throughput_df$Grp[throughput_df$Grp == "DANDELION"] <- "ALGORAND++"
+latency_df$Grp[latency_df$Grp == "DANDELION"] <- "ALGORAND++"
+############################
+
+
+
+```
+
+
+# Throughput
+
+```{r, echo=FALSE, fig.height=4, fig.width=6, include=TRUE}
+
+integer_breaks <- function(n = 5, ...) {
+  fxn <- function(x) {
+    breaks <- floor(pretty(x, n, ...))
+    names(breaks) <- attr(breaks, "labels")
+    breaks
+  }
+  return(fxn)
+}
+
+#head(throughput_df, n = 100)
+#dandelion_median_baseline_throughput <- throughput_df %>%  filter(Grp == "DANDELION" & ID == 1000)
+#head(dandelion_median_baseline_throughput$Median)
+
+#head(dandelion_median_baseline_throughput)
+#head(algorand_median_baseline_throughput)
+
+library(ggplot2)
+
+ggplot(throughput_df, aes(x=ID, y=Median, group=Grp)) +
+  geom_line(aes( linetype=factor(Grp), color=factor(Grp) ))+
+  geom_point() +
+  #geom_errorbar(aes(ymin=Q1, ymax=Q3), width=.2) + #,position=position_dodge(0.05)
+  #labs( x = "Number of Nodes", y = "Throughput (KB/Second)", color = "", linetype="" )+
+  labs( x = "Number of Nodes", y = "Throughput Degradation (%)", color = "", linetype="" )+
+  theme_bw()+
+  theme(legend.position="top",legend.box="vertical", legend.margin=margin()) +
+  expand_limits(y = 0)+
+  scale_x_continuous(breaks = throughput_df$ID) +
+  scale_y_continuous(breaks=seq(0,max(latency_df$Median),0.2), labels = scales::percent)
+
+ggsave("scalability-throughput.pdf")
+
+kable(throughput_df)
+
+```
+
+
+# Latency
+
+```{r, echo=FALSE, fig.height=4, fig.width=6, include=TRUE}
+
+
+ggplot(latency_df, aes(x=ID, y=Median, group=Grp)) +
+  geom_line(aes( linetype=factor(Grp), color=factor(Grp) ))+
+  geom_point() +
+  #geom_errorbar(aes(ymin=Q1, ymax=Q3), width=.2) + #,position=position_dodge(0.05)
+  #labs( x = "Number of Nodes", y = "Round Latency (Seconds)", color = "", linetype="" )+
+  labs( x = "Number of Nodes", y = "Round Duration Increase (%)", color = "", linetype="" )+
+  theme_bw()+
+  theme(legend.position="top",legend.box="vertical", legend.margin=margin()) +
+  expand_limits(y = 0) + 
+  scale_x_continuous(breaks = latency_df$ID) +
+  scale_y_continuous(breaks=seq(0,max(latency_df$Median),0.2), labels = scales::percent)
+
+
+ggsave("scalability-latency.pdf")
+
+
+kable(latency_df)
+
+```
+
+
+
