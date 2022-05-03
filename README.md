@@ -11,6 +11,8 @@ The repository uses git lfs, after checkout, you need to use following command t
 ***plot_data*** folder contains the data that is used to produce the final plots, and example plots in ***pdf*** format.
 
 
+***experiment-data-full*** folder contains everthing as I stored on my machine. I have used zip split file feature because git lfs do not allow files larger than 2GB(valid for Git free or Pro accounts).
+
 If you have any questions regarding the data, you should inspect the corresponding ***./raw_data/%experiment_name%/\*.Rmd***  R script that is used to produce the data file by processing raw data.
 
 Note: The scripts are also available under ***plot_data*** folder. If you want to reproduce plots, you should run the scripts under ***raw_data*** folder, because the scripts under ***plot_data*** might not produce plots, they are put there for demonstration purposes.
